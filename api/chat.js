@@ -1,9 +1,25 @@
 export default async function handler(req, res) {
+  // CORS Headers (নেটওয়ার্ক এরর ফিক্স করার জন্য)
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // ব্রাউজারের Preflight রিকোয়েস্ট হ্যান্ডেল করা
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
+  // সঠিক মডেলের নাম দেওয়া হলো (gemini-1.5-flash)
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
 
   try {
