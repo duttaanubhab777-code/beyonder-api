@@ -54,7 +54,7 @@ export default async function handler(req, res) {
 
             // যদি Qwen হয়, তাহলে আপনার দেওয়া স্পেশাল কোডগুলো অ্যাড হবে
             if (provider === 'qwen') {
-                groqBody.max_completion_tokens = 1024;
+                groqBody.max_completion_tokens = 800;
                 groqBody.reasoning_effort = "none";
             } else {
                 // বাকিদের জন্য নরমাল টোকেন লিমিট
