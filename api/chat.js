@@ -21,8 +21,8 @@ export default async function handler(req, res) {
     try {
         const { provider, ...bodyData } = req.body;
 
-        // Groq-এর মডেলগুলো (GPT-OSS, Qwen, Llama)
-        const groqModels = ['gpt-oss', 'qwen', 'llama'];
+        // Groq-এর মডেলগুলো (GPT-OSS, Qwen, Groq)
+        const groqModels = ['gpt-oss', 'qwen', 'groq'];
 
         if (groqModels.includes(provider)) {
             const apiKey = process.env.GROQ_API_KEY; 
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
             let selectedModel = "";
             if (provider === 'gpt-oss') selectedModel = "openai/gpt-oss-120b";
             else if (provider === 'qwen') selectedModel = "qwen/qwen3.8-27b";
-            else if (provider === 'llama') selectedModel = "openai/gpt-oss-safeguard-20b";
+            else if (provider === 'groq') selectedModel = "groq/compound";
 
             // Gemini-এর মেসেজ ফরম্যাট থেকে Groq/OpenAI ফরম্যাটে কনভার্ট করা
             let groqMessages = [];
