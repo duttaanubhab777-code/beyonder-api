@@ -51,9 +51,11 @@ export default async function handler(req, res) {
             }
 
             const groqBody = {
-                model: selectedModel,
-                messages: groqMessages
-            };
+    model: selectedModel,
+    messages: groqMessages,
+    max_completion_tokens: 1024,
+    reasoning_effort: "none"
+};
 
             const response = await fetch(url, {
                 method: "POST",
