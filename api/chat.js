@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-    // 1. CORS Headers (যেটা আপনি চেয়েছিলেন)
+    // 1. CORS Headers
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -8,7 +8,6 @@ export default async function handler(req, res) {
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
-    // Preflight request handle করা
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
@@ -21,26 +20,23 @@ export default async function handler(req, res) {
     try {
         const { provider, ...bodyData } = req.body;
 
-        // Groq-এর মডেলগুলো (GPT-OSS, Qwen, Groq)
         const groqModels = ['gpt-oss', 'qwen', 'groq'];
 
         if (groqModels.includes(provider)) {
             const apiKey = process.env.GROQ_API_KEY; 
             const url = 'https://api.groq.com/openai/v1/chat/completions';
 
-            // মডেলের নাম ঠিক করা
             let selectedModel = "";
             if (provider === 'gpt-oss') selectedModel = "openai/gpt-oss-120b";
             else if (provider === 'qwen') selectedModel = "qwen/qwen3.8-27b";
             else if (provider === 'groq') selectedModel = "groq/compound";
 
-            // Gemini-এর মেসেজ ফরম্যাট থেকে Groq/OpenAI ফরম্যাটে কনভার্ট করা
             let groqMessages = [];
-            
+
             if (bodyData.systemInstruction?.parts?.[0]?.text) {
                 groqMessages.push({ role: "system", content: bodyData.systemInstruction.parts[0].text });
             }
-            
+
             if (bodyData.contents) {
                 bodyData.contents.forEach(msg => {
                     groqMessages.push({
@@ -50,12 +46,20 @@ export default async function handler(req, res) {
                 });
             }
 
+            // 🛑 ম্যাজিক লজিক: মডেল অনুযায়ী প্যারামিটার সেট করা
             const groqBody = {
-    model: selectedModel,
-    messages: groqMessages,
-    max_completion_tokens: 1024,
-    reasoning_effort: "none"
-};
+                model: selectedModel,
+                messages: groqMessages
+            };
+
+            // যদি Qwen হয়, তাহলে আপনার দেওয়া স্পেশাল কোডগুলো অ্যাড হবে
+            if (provider === 'qwen') {
+                groqBody.max_completion_tokens = 1024;
+                groqBody.reasoning_effort = "none";
+            } else {
+                // বাকিদের জন্য নরমাল টোকেন লিমিট
+                groqBody.max_tokens = 1024;
+            }
 
             const response = await fetch(url, {
                 method: "POST",
@@ -68,18 +72,24 @@ export default async function handler(req, res) {
 
             const data = await response.json();
 
-            // রেসপন্সকে আবার Gemini-এর মতো করে সাজিয়ে ফ্রন্টএন্ডে পাঠানো
-            // যাতে আপনার পুরোনো কোড কোনোভাবেই ব্রেক না করে
+            // কোনো মডেল এরর দিলে সেটা চ্যাটে দেখাবে
+            if (data.error) {
+                return res.status(200).json({
+                    candidates: [
+                        { content: { parts: [{ text: `⚠️ **Groq API Error:** ${data.error.message}` }] } }
+                    ]
+                });
+            }
+
             const formattedResponse = {
                 candidates: [
                     { content: { parts: [{ text: data.choices[0].message.content }] } }
                 ]
             };
-            
+
             return res.status(200).json(formattedResponse);
         } 
         
-        // যদি ইউজার Gemini সিলেক্ট করে থাকে বা কোনো কারণে provider না আসে (Default)
         else {
             const apiKey = process.env.GEMINI_API_KEY;
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
@@ -96,7 +106,10 @@ export default async function handler(req, res) {
 
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Server error" });
+        return res.status(200).json({
+            candidates: [
+                { content: { parts: [{ text: `⚠️ **Server Error:** ${err.message}` }] } }
+            ]
+        });
     }
 }
-
